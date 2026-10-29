@@ -22,76 +22,92 @@ subDirs.forEach((dir) => {
   }
 });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let folder = 'uploads';
-    const fieldMap = {
-      avatar: 'avatars',
-      assignment: 'assignments',
-      notes: 'notes',
-      feeVoucher: 'fees',
-      books: 'books',
-      documents: 'documents',
-    };
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     let folder = 'uploads';
+//     const fieldMap = {
+//       avatar: 'avatars',
+//       assignment: 'assignments',
+//       notes: 'notes',
+//       feeVoucher: 'fees',
+//       books: 'books',
+//       documents: 'documents',
+//     };
 
-    const subFolder = fieldMap[file.fieldname] || 'documents';
-    const dirPath = path.join(__dirname, '../../uploads', subFolder);
+  //   const subFolder = fieldMap[file.fieldname] || 'documents';
+  //   const dirPath = path.join(__dirname, '../../uploads', subFolder);
 
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
+  //   if (!fs.existsSync(dirPath)) {
+  //     fs.mkdirSync(dirPath, { recursive: true });
+  //   }
 
-    cb(null, dirPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${uuidv4()}`;
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  },
-});
+  //   cb(null, dirPath);
+  // },
+//   filename: (req, file, cb) => {
+//     const uniqueSuffix = `${Date.now()}-${uuidv4()}`;
+//     const ext = path.extname(file.originalname);
+//     cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+//   },
+// });
+
+const storage = multer.memoryStorage();
+
+const allowedTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+  'application/zip',
+  'application/x-zip-compressed',
+];
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'image/svg+xml',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain',
-    'application/zip',
-    'application/x-zip-compressed',
-  ];
-
   if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(
-      new Error(
-        `Invalid file type. Allowed types: ${allowedTypes.join(', ')}`
-      ),
-      false
-    );
+    return cb(null, true);
   }
+
+  return cb(
+    new Error(
+      `Invalid file type. Allowed types: ${allowedTypes.join(', ')}`
+    )
+  );
 };
+
+const maxFileSize = Number.parseInt(
+  process.env.MAX_FILE_SIZE,
+  10
+);
 
 const upload = multer({
   storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024,
+    fileSize:
+      Number.isFinite(maxFileSize) && maxFileSize > 0
+        ? maxFileSize
+        : 5 * 1024 * 1024,
   },
   fileFilter,
 });
 
-export const uploadSingle = (fieldName) => upload.single(fieldName);
+// Upload one file, for example: uploadSingle('avatar')
+export const uploadSingle = (fieldName) =>
+  upload.single(fieldName);
+
+// Upload multiple files, for example: uploadMultiple('documents', 5)
 export const uploadMultiple = (fieldName, maxCount = 5) =>
   upload.array(fieldName, maxCount);
-export const uploadFields = (fields) => upload.fields(fields);
+
+// Upload files from multiple fields.
+export const uploadFields = (fields) =>
+  upload.fields(fields);
 
 export default upload;
